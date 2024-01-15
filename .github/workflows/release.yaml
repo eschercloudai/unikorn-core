@@ -1,0 +1,50 @@
+name: Unikorn Merge
+on:
+  push:
+    branches:
+    - main
+    tags-ignore:
+    - '*'
+env:
+  GO_VERSION: 1.21.1
+jobs:
+  Coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Configure Git
+      run: |
+        git config user.name "$GITHUB_ACTOR"
+        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+    - name: Rehease Helm Chart
+      run: |
+        curl -sSLo cr.tar.gz "https://github.com/helm/chart-releaser/releases/download/v1.2.1/chart-releaser_1.2.1_linux_amd64.tar.gz"
+        tar -xzf cr.tar.gz
+        rm -f cr.tar.gz
+        owner=$(cut -d '/' -f 1 <<< "$GITHUB_REPOSITORY")
+        repo=$(cut -d '/' -f 2 <<< "$GITHUB_REPOSITORY")
+        ./cr package charts/$repo
+        ./cr upload \
+            --owner "$owner" \
+            --git-repo "$repo" \
+            --token "${{ secrets.GITHUB_TOKEN }}" \
+            --release-name-template "{{ .Version }}"
+        ./cr index \
+            --owner "$owner" \
+            --git-repo "$repo" \
+            --token "${{ secrets.GITHUB_TOKEN }}" \
+            --release-name-template "{{ .Version }}" \
+            --index-path ./index.yaml \
+            --charts-repo https://$owner.github.io/$repo \
+            --push
+    - name: Release
+      uses: softprops/action-gh-release@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        name: Release ${{ github.ref_name }}
+        tag_name: ${{ github.ref_name }}
