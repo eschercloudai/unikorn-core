@@ -1,12 +1,10 @@
-name: Unikorn Merge
+name: Release
 on:
   push:
-    branches:
-    - main
-    tags-ignore:
+    branches-ignore:
     - '*'
-env:
-  GO_VERSION: 1.21.1
+    tags:
+    - '*'
 jobs:
   Coverage:
     runs-on: ubuntu-latest
